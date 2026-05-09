@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kronespillet – digital sannsynlighet</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #13213b;
+      --panel: #f8fafc;
+      --ink: #102033;
+      --muted: #5b6472;
+      --gold: #f5c542;
+      --gold-dark: #c58a08;
+      --red: #dc3f4d;
+      --green: #1d9a64;
+      --blue: #2867d9;
+      --shadow: rgba(11, 22, 40, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(245, 197, 66, 0.18), transparent 32rem),
+        linear-gradient(135deg, #101a30, var(--bg));
+      color: var(--ink);
+    }
+
+    header {
+      color: white;
+      padding: 2rem clamp(1rem, 4vw, 3rem) 1rem;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(2rem, 5vw, 4rem);
+      letter-spacing: -0.05em;
+    }
+
+    header p {
+      margin: 0 auto;
+      max-width: 62rem;
+      color: #dce7ff;
+      line-height: 1.6;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(20rem, 1.25fr) minmax(18rem, 0.75fr);
+      gap: 1.25rem;
+      padding: 1rem clamp(1rem, 4vw, 3rem) 3rem;
+      max-width: 82rem;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border-radius: 1.25rem;
+      box-shadow: 0 1.25rem 3rem var(--shadow);
+      overflow: hidden;
+    }
+
+    .game-card { padding: 1rem; }
+
+    .board {
+      position: relative;
+      height: min(72vh, 42rem);
+      min-height: 34rem;
+      border-radius: 1rem;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 3rem 3rem,
+        linear-gradient(0deg, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 3rem 3rem,
+        linear-gradient(180deg, #2b6c8f 0%, #244968 52%, #1b3149 100%);
+      border: 0.35rem solid #d5e3ee;
+      touch-action: none;
+    }
+
+    .slot-row {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      right: 1rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+      gap: 0.5rem;
+      z-index: 3;
+    }
+
+    .slot {
+      min-height: 4.6rem;
+      border-radius: 0.8rem;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: white;
+      font-weight: 800;
+      border: 3px solid rgba(255,255,255,0.72);
+      box-shadow: inset 0 -0.4rem rgba(0,0,0,0.14);
+      line-height: 1.15;
+      padding: 0.25rem;
+    }
+
+    .slot small { display: block; font-weight: 700; opacity: 0.9; }
+    .slot.miss { background: #506173; }
+    .slot.small { background: var(--green); }
+    .slot.medium { background: var(--blue); }
+    .slot.big { background: var(--red); }
+
+    .peg {
+      position: absolute;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      background: #dce7ff;
+      box-shadow: 0 0.25rem 0 #8ca4ba;
+      opacity: 0.85;
+    }
+
+    .coin {
+      position: absolute;
+      width: 4.4rem;
+      height: 4.4rem;
+      left: calc(50% - 2.2rem);
+      bottom: 1.5rem;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 35% 30%, #fff5b6, var(--gold) 45%, var(--gold-dark) 100%);
+      border: 0.22rem solid #8b5d05;
+      color: #714b00;
+      font-size: 2rem;
+      font-weight: 950;
+      box-shadow: 0 0.65rem 0 #7b5204, 0 1.1rem 1.6rem rgba(0,0,0,0.35);
+      cursor: grab;
+      user-select: none;
+      z-index: 4;
+      transform: translate(0, 0) rotate(0deg);
+    }
+
+    .coin:active { cursor: grabbing; }
+
+    .aim-line {
+      position: absolute;
+      left: 50%;
+      bottom: 3.7rem;
+      width: 0.25rem;
+      height: 0;
+      background: rgba(245, 197, 66, 0.8);
+      transform-origin: bottom center;
+      border-radius: 999px;
+      z-index: 2;
+      display: none;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: 0;
+      border-radius: 0.85rem;
+      padding: 0.9rem 1rem;
+      font: inherit;
+      font-weight: 800;
+      color: white;
+      background: var(--blue);
+      cursor: pointer;
+      box-shadow: 0 0.35rem 0 #174495;
+    }
+
+    button.secondary { background: #475569; box-shadow: 0 0.35rem 0 #273142; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .side { display: grid; gap: 1rem; }
+    .panel { padding: 1.25rem; }
+    .panel h2 { margin: 0 0 0.75rem; font-size: 1.25rem; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .stat {
+      background: #edf3f8;
+      border-radius: 0.9rem;
+      padding: 0.85rem;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .stat strong { font-size: 1.6rem; }
+
+    .message {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 0.9rem;
+      background: #fff7d6;
+      border: 2px solid #f4d365;
+      line-height: 1.45;
+      min-height: 4rem;
+    }
+
+    .tree {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #102033;
+      color: #e8f1ff;
+      padding: 1rem;
+      border-radius: 0.9rem;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+
+    .legend {
+      display: grid;
+      gap: 0.5rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .legend li {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 0.45rem;
+    }
+
+    .tip {
+      color: var(--muted);
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    @media (max-width: 860px) {
+      main { grid-template-columns: 1fr; }
+      .board { height: 35rem; }
+      .controls { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kronespillet</h1>
+    <p>Knips den digitale kronen mot gevinstlukene. Spillet viser samtidig hvordan utfallene kan forklares med sannsynlighet og hendelsestre.</p>
+  </header>
+
+  <main>
+    <section class="card game-card" aria-label="Kronespillbrett">
+      <div id="board" class="board">
+        <div class="slot-row" aria-label="Gevinstluker">
+          <div class="slot miss" data-min="0" data-max="18">Bom<br><small>0 kr</small></div>
+          <div class="slot small" data-min="18" data-max="38">Liten<br><small>+2 kr</small></div>
+          <div class="slot big" data-min="38" data-max="62">Stor<br><small>+5 kr</small></div>
+          <div class="slot medium" data-min="62" data-max="82">Middels<br><small>+3 kr</small></div>
+          <div class="slot miss" data-min="82" data-max="100">Bom<br><small>0 kr</small></div>
+        </div>
+        <div id="aimLine" class="aim-line"></div>
+        <div id="coin" class="coin" role="button" tabindex="0" aria-label="Dra og slipp kronen for å skyte">1</div>
+      </div>
+      <div class="controls">
+        <button id="shootLeft">Skyt venstre</button>
+        <button id="shootCenter">Skyt rett frem</button>
+        <button id="reset" class="secondary">Start på nytt</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card panel">
+        <h2>Resultat</h2>
+        <div class="stats">
+          <div class="stat"><span>Saldo</span><strong id="balance">10 kr</strong></div>
+          <div class="stat"><span>Runder</span><strong id="rounds">0</strong></div>
+          <div class="stat"><span>Gevinster</span><strong id="wins">0</strong></div>
+          <div class="stat"><span>Estimert vinnersjanse</span><strong id="winRate">0 %</strong></div>
+        </div>
+        <div id="message" class="message">Dra kronen bakover og slipp, eller bruk knappene. Hvert skudd koster 1 kr.</div>
+      </section>
+
+      <section class="card panel">
+        <h2>Hendelsestre for ett skudd</h2>
+        <div class="tree" id="tree">Start
+├── Bom: 36 % → -1 kr
+├── Liten gevinst: 20 % → +1 kr netto
+├── Stor gevinst: 24 % → +4 kr netto
+└── Middels gevinst: 20 % → +2 kr netto</div>
+      </section>
+
+      <section class="card panel">
+        <h2>Sannsynlighet i spillet</h2>
+        <ul class="legend">
+          <li><span>Bomluker</span><strong>36 %</strong></li>
+          <li><span>Gevinstluker totalt</span><strong>64 %</strong></li>
+          <li><span>To gevinster på rad</span><strong>0,64 · 0,64 = 40,96 %</strong></li>
+          <li><span>Nøyaktig én gevinst på to skudd</span><strong>46,08 %</strong></li>
+        </ul>
+        <p class="tip">Tips til presentasjon: Forklar at ett skudd er en sannsynlighetsfordeling, mens flere skudd etter hverandre kan tegnes som et hendelsestre.</p>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const board = document.querySelector('#board');
+    const coin = document.querySelector('#coin');
+    const aimLine = document.querySelector('#aimLine');
+    const message = document.querySelector('#message');
+    const balanceEl = document.querySelector('#balance');
+    const roundsEl = document.querySelector('#rounds');
+    const winsEl = document.querySelector('#wins');
+    const winRateEl = document.querySelector('#winRate');
+    const buttons = document.querySelectorAll('button');
+
+    const state = {
+      balance: 10,
+      rounds: 0,
+      wins: 0,
+      busy: false,
+      dragStart: null,
+      coinStart: { x: 0, y: 0 }
+    };
+
+    const outcomes = [
+      { name: 'Bom', min: 0, max: 18, payout: 0, className: 'miss' },
+      { name: 'Liten gevinst', min: 18, max: 38, payout: 2, className: 'small' },
+      { name: 'Stor gevinst', min: 38, max: 62, payout: 5, className: 'big' },
+      { name: 'Middels gevinst', min: 62, max: 82, payout: 3, className: 'medium' },
+      { name: 'Bom', min: 82, max: 100, payout: 0, className: 'miss' }
+    ];
+
+    function updateStats() {
+      balanceEl.textContent = `${state.balance} kr`;
+      roundsEl.textContent = state.rounds;
+      winsEl.textContent = state.wins;
+      winRateEl.textContent = state.rounds ? `${Math.round((state.wins / state.rounds) * 100)} %` : '0 %';
+    }
+
+    function setBusy(value) {
+      state.busy = value;
+      buttons.forEach((button) => button.disabled = value || (button.id !== 'reset' && state.balance <= 0));
+      coin.style.pointerEvents = value || state.balance <= 0 ? 'none' : 'auto';
+    }
+
+    function resetCoin() {
+      coin.style.transition = 'transform 280ms ease';
+      coin.style.transform = 'translate(0, 0) rotate(0deg)';
+      aimLine.style.display = 'none';
+      aimLine.style.height = '0';
+      window.setTimeout(() => coin.style.transition = '', 300);
+    }
+
+    function findOutcome(percentX) {
+      return outcomes.find((item) => percentX >= item.min && percentX < item.max) || outcomes[outcomes.length - 1];
+    }
+
+    function finishShot(percentX) {
+      const outcome = findOutcome(percentX);
+      const net = outcome.payout - 1;
+      state.balance += outcome.payout;
+      state.rounds += 1;
+      if (outcome.payout > 0) state.wins += 1;
+      updateStats();
+
+      const sign = net >= 0 ? '+' : '';
+      message.innerHTML = `<strong>${outcome.name}!</strong> Innsats: -1 kr, premie: ${outcome.payout} kr, netto: ${sign}${net} kr.`;
+
+      window.setTimeout(() => {
+        resetCoin();
+        setBusy(false);
+        if (state.balance <= 0) {
+          message.innerHTML += '<br><strong>Du er tom for kroner.</strong> Trykk «Start på nytt» for å prøve igjen.';
+        }
+      }, 850);
+    }
+
+    function shoot(power = 0.75, direction = 0) {
+      if (state.busy || state.balance <= 0) return;
+      setBusy(true);
+      state.balance -= 1;
+      updateStats();
+
+      const boardWidth = board.clientWidth;
+      const boardHeight = board.clientHeight;
+      const randomness = (Math.random() - 0.5) * 34;
+      const skill = direction * 28;
+      const percentX = Math.max(2, Math.min(98, 50 + skill + randomness));
+      const x = (percentX / 100 - 0.5) * boardWidth;
+      const y = -(boardHeight - 92) * Math.max(0.58, Math.min(1, power));
+      const rotation = 720 + Math.round(Math.random() * 420);
+
+      coin.style.transition = 'transform 780ms cubic-bezier(.16,.84,.28,1.02)';
+      coin.style.transform = `translate(${x}px, ${y}px) rotate(${rotation}deg)`;
+      window.setTimeout(() => finishShot(percentX), 790);
+    }
+
+    function showAim(dx, dy) {
+      const length = Math.min(160, Math.hypot(dx, dy));
+      const angle = Math.atan2(dx, Math.abs(dy)) * (180 / Math.PI);
+      aimLine.style.display = 'block';
+      aimLine.style.height = `${length}px`;
+      aimLine.style.transform = `rotate(${angle}deg)`;
+    }
+
+    coin.addEventListener('pointerdown', (event) => {
+      if (state.busy || state.balance <= 0) return;
+      coin.setPointerCapture(event.pointerId);
+      state.dragStart = { x: event.clientX, y: event.clientY };
+    });
+
+    coin.addEventListener('pointermove', (event) => {
+      if (!state.dragStart || state.busy) return;
+      const dx = event.clientX - state.dragStart.x;
+      const dy = event.clientY - state.dragStart.y;
+      const pullX = Math.max(-90, Math.min(90, dx));
+      const pullY = Math.max(0, Math.min(110, dy));
+      coin.style.transform = `translate(${pullX}px, ${pullY}px) rotate(${pullX * 1.5}deg)`;
+      showAim(-pullX, pullY);
+    });
+
+    coin.addEventListener('pointerup', (event) => {
+      if (!state.dragStart || state.busy) return;
+      const dx = event.clientX - state.dragStart.x;
+      const dy = event.clientY - state.dragStart.y;
+      state.dragStart = null;
+      const power = Math.max(0.45, Math.min(1, dy / 120));
+      const direction = Math.max(-1, Math.min(1, -dx / 90));
+      shoot(power, direction);
+    });
+
+    coin.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        shoot(0.75, 0);
+      }
+    });
+
+    document.querySelector('#shootLeft').addEventListener('click', () => shoot(0.75, -0.65));
+    document.querySelector('#shootCenter').addEventListener('click', () => shoot(0.82, 0));
+    document.querySelector('#reset').addEventListener('click', () => {
+      state.balance = 10;
+      state.rounds = 0;
+      state.wins = 0;
+      message.textContent = 'Dra kronen bakover og slipp, eller bruk knappene. Hvert skudd koster 1 kr.';
+      updateStats();
+      resetCoin();
+      setBusy(false);
+    });
+
+    const pegPositions = [
+      [20, 24], [40, 23], [60, 23], [80, 24],
+      [30, 37], [50, 36], [70, 37],
+      [18, 51], [38, 50], [62, 50], [82, 51],
+      [30, 65], [50, 64], [70, 65]
+    ];
+
+    pegPositions.forEach(([left, top]) => {
+      const peg = document.createElement('span');
+      peg.className = 'peg';
+      peg.style.left = `${left}%`;
+      peg.style.top = `${top}%`;
+      board.appendChild(peg);
+    });
+
+    updateStats();
+    setBusy(false);
+  </script>
+</body>
+</html>
